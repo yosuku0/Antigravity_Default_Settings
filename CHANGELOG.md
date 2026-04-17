@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.5] - 2026-04-17
+### Added
+- **Strict Pin Validation**: `validate-runtime.ps1` now verifies current HEAD SHAs against `upstream-pins.json`.
+- **Automated Library Refresh**: `initial-setup.ps1` now forcefully refreshes the `skills_library` from upstream to ensure consistency.
+- **Portable Manifest**: Sanitized `manifest.md` by removing absolute paths and fixing encoding issues.
+- **Resilient Promotion**: Implemented temp-staging swap logic in `promote-runtime-assets.ps1` for safer updates.
+
 ## [1.0.4] - 2026-04-17
 ### Fixed
 - **Docs Drift Hotfix**: Removed machine-specific paths and fixed broken code fences in `runbook.md` and its generator template to align with the portable execution model.

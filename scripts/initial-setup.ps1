@@ -101,12 +101,12 @@ $libMap = @(
 
 foreach ($item in $libMap) {
     if (-not (Test-Path $item.Src)) { Write-Error "Upstream source missing: $($item.Src)"; return }
+    # Hardening Sprint 2: Always refresh library from upstream to ensure pin consistency
     if (Test-Path $item.Dest) {
-        Write-Host "Skipped (Already in library): $($item.Name)"
-    } else {
-        if ($item.Type -eq "Dir") { Copy-Item $item.Src $item.Dest -Recurse } else { Copy-Item $item.Src $item.Dest }
-        Write-Host "Extracted: $($item.Name)" -ForegroundColor Green
+        if ($item.Type -eq "Dir") { Remove-Item $item.Dest -Recurse -Force } else { Remove-Item $item.Dest -Force }
     }
+    if ($item.Type -eq "Dir") { Copy-Item $item.Src $item.Dest -Recurse } else { Copy-Item $item.Src $item.Dest }
+    Write-Host "Extracted (Refreshed): $($item.Name)" -ForegroundColor Green
 }
 
 # ============================================================
@@ -135,7 +135,7 @@ AI context evaluation policy:
 - Direct copy to active_* is prohibited
 
 ## Root Detection
-This file marks the root of an Antigravity environment. Parent directory: $($baseRoot)
+This file marks the root of an Antigravity environment.
 "@
     Write-Utf8NoBom $manifestPath $manifestContent
     Write-Host "Created: manifest.md" -ForegroundColor Green

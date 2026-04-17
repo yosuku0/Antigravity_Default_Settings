@@ -2,7 +2,7 @@ param (
     [switch]$Json
 )
 
-### validate-runtime.ps1 窶・AntigravityLab Validation v2.4.0 ###
+### validate-runtime.ps1 — AntigravityLab Validation v2.5.0 ###
 ### Scope: Clone 2 + Library 5 + Active 7 + Template 10 = 24 items ###
 $baseRoot = Split-Path -Parent $PSScriptRoot
 $hasError = $false
@@ -10,16 +10,64 @@ $checkCount = 0
 $passedCount = 0
 $failedItems = @()
 
-# For .git directories: strictly check for directory existence
-function Test-DirValid ($Category, $Path) {
+# Prerequisite: Git Availability
+$gitAvailable = $false
+try {
+    $null = git --version 2>$null
+    if ($LASTEXITCODE -eq 0) { $gitAvailable = $true }
+} catch {
+    $gitAvailable = $false
+}
+
+# Prerequisite: Load Pins
+$pinsPath = "$baseRoot\scripts\upstream-pins.json"
+$pins = if (Test-Path $pinsPath) { Get-Content $pinsPath | ConvertFrom-Json } else { $null }
+
+# For Upstream repositories: check .git existence AND SHA pin match
+function Test-PinValid ($Category, $RepoPath, $PinKey) {
     $script:checkCount++
-    if (Test-Path $Path -PathType Container) {
-        $script:passedCount++
-        if (-not $Json) { Write-Host "[$Category] PASS (Dir exists): $(Split-Path $Path -Leaf)" -ForegroundColor Green }
-    } else {
+    
+    # 1. Directory Check
+    if (-not (Test-Path "$RepoPath\.git" -PathType Container)) {
         $script:hasError = $true
-        $script:failedItems += "[$Category] Missing or not a dir: $Path"
-        if (-not $Json) { Write-Host "[$Category] FAIL (Missing/Not a dir): $Path" -ForegroundColor Red }
+        $script:failedItems += "[$Category] Missing .git: $(Split-Path $RepoPath -Leaf)"
+        if (-not $Json) { Write-Host "[$Category] FAIL (Missing .git): $(Split-Path $RepoPath -Leaf)" -ForegroundColor Red }
+        return
+    }
+
+    # 2. Git Check
+    if (-not $gitAvailable) {
+        $script:hasError = $true
+        $script:failedItems += "[$Category] Git is not installed or not in PATH"
+        if (-not $Json) { Write-Host "[$Category] FAIL (Git missing): Cannot verify SHA" -ForegroundColor Red }
+        return
+    }
+
+    # 3. Pin Check
+    if (-not $pins -or -not $pins.$PinKey) {
+        $script:hasError = $true
+        $script:failedItems += "[$Category] Pin definition missing for $PinKey"
+        if (-not $Json) { Write-Host "[$Category] FAIL (Pin missing): $PinKey" -ForegroundColor Red }
+        return
+    }
+
+    $expectedSha = $pins.$PinKey.commit
+    try {
+        $currentSha = git -C $RepoPath rev-parse HEAD 2>$null
+        $currentSha = $currentSha.Trim()
+        
+        if ($currentSha -eq $expectedSha) {
+            $script:passedCount++
+            if (-not $Json) { Write-Host "[$Category] PASS (SHA match): $PinKey ($($currentSha.SubString(0,7)))" -ForegroundColor Green }
+        } else {
+            $script:hasError = $true
+            $script:failedItems += "[$Category] SHA mismatch ($currentSha != $expectedSha): $PinKey"
+            if (-not $Json) { Write-Host "[$Category] FAIL (SHA mismatch): $PinKey" -ForegroundColor Red }
+        }
+    } catch {
+        $script:hasError = $true
+        $script:failedItems += "[$Category] Git command failed for $PinKey"
+        if (-not $Json) { Write-Host "[$Category] FAIL (Git error): $PinKey" -ForegroundColor Red }
     }
 }
 
@@ -61,10 +109,10 @@ function Test-FileValid ($Category, $Path, $ExpectedHeader = "") {
     }
 }
 
-# --- [1/4] Clone (2 items) ---
-if (-not $Json) { Write-Host "--- [1/4] Upstream Clone (2 items) ---" }
-Test-DirValid "Clone" "$baseRoot\upstream\antigravity-awesome-skills\.git"
-Test-DirValid "Clone" "$baseRoot\upstream\everything-claude-code\.git"
+# --- [1/4] Upstream Clone & Pins (2 items) ---
+if (-not $Json) { Write-Host "--- [1/4] Upstream Clone & Pins (2 items) ---" }
+Test-PinValid "Clone" "$baseRoot\upstream\antigravity-awesome-skills" "antigravity-awesome-skills"
+Test-PinValid "Clone" "$baseRoot\upstream\everything-claude-code" "everything-claude-code"
 
 # --- [2/4] Skills Library (5 items) ---
 if (-not $Json) { Write-Host "`n--- [2/4] Skills Library (5 items) ---" }
