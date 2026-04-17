@@ -53,10 +53,6 @@ All PASS = ready for use.
 - ドキュメント更新時は「純粋な Native 環境からの UTF-8 明示書き込み」または「全文テンプレート」による再生成で行う。
 - docs 変更後は必ず `Get-Content <file> -Encoding UTF8 | Select-Object -First 10` 等で先頭数行を確認すること。
 
-
 ## Machine Readable Status
-
-- .\scripts\validate-runtime.ps1 -Json で他プロセス向けの終了ステータスとJSONサマリが取得可能です。
-
-- 
-runtime/manifest.md の実在は、その親が Antigravity のベースキャンプであることを示す root marker としてご活用ください。
+- `.\scripts\validate-runtime.ps1 -Json` で、他プロセス向けの終了ステータスと JSON サマリを取得できます。
+- `runtime/manifest.md` の実在は、その親が Antigravity のベースキャンプであることを示す root marker として扱えます。
