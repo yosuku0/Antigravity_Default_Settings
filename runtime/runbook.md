@@ -46,3 +46,10 @@ All PASS = ready for use.
 - Direct copy to active_* (must go through promote script)
 - Editing files inside the upstream directory
 - Overwriting template with initial-setup.ps1 re-run (existing files are protected)
+
+
+## Machine Readable Status
+
+- .\scripts\validate-runtime.ps1 -Json で他プロセス向けの終了ステータスとJSONサマリが取得可能です。
+
+- untime/manifest.md の実在は、その親が Antigravity のベースキャンプであることを示す root marker としてご活用ください。
