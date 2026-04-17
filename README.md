@@ -14,18 +14,18 @@ Antigravity環境における「コンテキスト汚染を防ぎ、自律的な
 ## 導入手順
 
 ### 1. リポジトリの配置
-このリポジトリをメインの開発ドライブのお好きな場所（例: `F:\AntigravityLab` 等）に Clone します。スクリプトは配置されたディレクトリをルートとして動作します。
+このリポジトリをメインの開発ドライブのお好きな場所（例: `C:\Dev\AntigravityLab` 等）に Clone します。スクリプトは配置されたディレクトリ（リポジトリルート）を基準として動作します。
 
 ```powershell
-git clone https://github.com/yosuku0/Antigravity_Default_Settings.git F:\AntigravityLab
-cd F:\AntigravityLab
+git clone https://github.com/yosuku0/Antigravity_Default_Settings.git C:\Dev\AntigravityLab
+cd C:\Dev\AntigravityLab
 ```
 
 ### 2. 初期セットアップ
 ```powershell
 .\scripts\initial-setup.ps1
 ```
-ディレクトリ空間の生成、Upstreamリポジトリの取得が行われます。（この時点ではスキルは有効化されていません。また、2度目以降の実行でも既存ファイルは保護されます。）
+ディレクトリ空間の生成、および **`scripts/upstream-pins.json` に固定された特定コミット** での Upstreamリポジトリ取得が行われます。
 
 ### 3. スキルの有効化（Promote）
 ```powershell

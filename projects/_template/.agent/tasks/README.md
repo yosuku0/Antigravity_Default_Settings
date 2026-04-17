@@ -1,2 +1,2 @@
-﻿# Task Board
+# Task Board
 - [ ] Initial setup
