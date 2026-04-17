@@ -5,14 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.1] - 2026-04-17
+## [1.0.2] - 2026-04-17
 ### Added
-- Implemented machine-readable output mode (`-Json`) for `validate-runtime.ps1` with standard exit codes.
-- Established "Documentation Update Policy" guardrail to prevent encoding corruption.
+- Established "Documentation Update Policy" guardrail in `runbook.md` to prevent future encoding corruption.
 
 ### Fixed
-- Restored `README.md` encoding and fixed mojibake caused by shell string replacement.
-- Fixed broken layout and typos in `runbook.md`.
+- Restored `README.md` encoding and fixed mojibake from previous shell replacement.
+- Fixed broken layout and bullet formatting in `runbook.md`.
+- Simplified `README.md` to reduce redundancy with `runbook.md`.
+
+## [1.0.1] - 2026-04-17
+### Added
+- Implemented machine-readable output mode (`-Json`) for `validate-runtime.ps1` with standard PowerShell exit codes (0/1).
+- Officially recognized `runtime/manifest.md` as the Antigravity Root Marker for environment detection.
 
 ## [1.0.0] - 2026-04-17
 ### Added
