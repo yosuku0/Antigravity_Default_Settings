@@ -47,6 +47,12 @@ All PASS = ready for use.
 - Editing files inside the upstream directory
 - Overwriting template with initial-setup.ps1 re-run (existing files are protected)
 
+## Documentation Update Policy (Guardrail)
+文字化け（Mojibake）事故を防ぐため、以下の運用ルールを厳守してください。
+- Markdown は PowerShell の直接的な文字列置換で触らない。
+- ドキュメント更新時は「純粋な Native 環境からの UTF-8 明示書き込み」または「全文テンプレート」による再生成で行う。
+- docs 変更後は必ず `Get-Content <file> -Encoding UTF8 | Select-Object -First 10` 等で先頭数行を確認すること。
+
 
 ## Machine Readable Status
 

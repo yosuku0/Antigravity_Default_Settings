@@ -14,3 +14,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hardened git clone logic by introducing proper `Start-Process` exit code validation to suppress PowerShell `NativeCommandError` misidentifications.
 - Developed the validation script enforcing 24 check conditions across Clone, Library, Active, and Template zones.
 - Configured robust `.gitignore` file to safeguard root repository structure from extracting and runtime state pollutions.
+- Restored `README.md` encoding and established strict update guardrails after a PowerShell-induced string replacement Mojibake incident.

@@ -48,10 +48,7 @@ notepad projects\my-new-project\.agent\project-context.md
 ```
 
 ## Upstreamリポジトリの更新運用
-1. `upstream/` 以下のリポジトリを `git pull` します。
-2. 必要なスキルを手動で `runtime/skills_library/` へ再抽出します。（対象を削除してから `initial-setup.ps1` を再実行するか、直接 Copy-Item します）
-3. `.\scripts\promote-runtime-assets.ps1 -Force` を実行し、`runtime/active_*/` に再昇格させます。
-4. `.\scripts\validate-runtime.ps1` で再検証します。
+具体的な更新・再展開の手順については、運用マニュアルである `runtime/runbook.md` を参照してください。
 
 ## 制約事項
 - Hooks や MCP（Model Context Protocol）の連携は本バージョンの対象外です。
