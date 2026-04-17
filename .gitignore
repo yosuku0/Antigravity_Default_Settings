@@ -1,0 +1,21 @@
+﻿# Upstream Repositories (External Sources)
+/upstream/
+
+# Extracted and Active Skills (Runtime State)
+/runtime/skills_library/
+/runtime/active_rules/
+/runtime/active_skills/
+/runtime/active_workflows/
+
+# Project Directories (Keep only _template)
+/projects/*
+!/projects/_template/**
+
+# Archive
+/archive/
+
+# Temporary files and PowerShell logs
+*.log
+*.tmp
+.DS_Store
+
