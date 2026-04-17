@@ -1,4 +1,4 @@
-﻿# AntigravityLab Runbook
+# AntigravityLab Runbook
 
 ## Prerequisites
 Save the following 3 scripts to `F:\AntigravityLab\` before running:
@@ -52,4 +52,5 @@ All PASS = ready for use.
 
 - .\scripts\validate-runtime.ps1 -Json で他プロセス向けの終了ステータスとJSONサマリが取得可能です。
 
-- untime/manifest.md の実在は、その親が Antigravity のベースキャンプであることを示す root marker としてご活用ください。
+- 
+runtime/manifest.md の実在は、その親が Antigravity のベースキャンプであることを示す root marker としてご活用ください。
