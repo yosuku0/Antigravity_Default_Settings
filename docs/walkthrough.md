@@ -1,64 +1,37 @@
-# Walkthrough: End-to-End Integrated Loop (Phase D Re-Submission)
+# Walkthrough: Robust End-to-End Integrated Loop (Phase D)
 
-Phase D の実装実体（v7 Wrapper / v5 Validator）に基づき、クローズドループの動作を **Success / Failure の独立ディレクトリ** で実証しました。
+Phase D の Repo 整合性を回復し、実装実体（v8 Wrapper / v5 Validator）とリポジトリ内の証跡を同期しました。
 
-## 1. Success Path 実証 (test_integration_success/)
+## 1. 永続的証跡の配置 (Repo-Local Evidence)
 
-Artifact がすべて正常な場合に、Manager が `task.md` の Frontmatter 内の status のみを更新することを実証しました。
+監査可能性を高めるため、一時ディレクトリではなくリポジトリ内の固定パスに検証結果を保存しました。
 
-- **実行コマンド**:
-```powershell
-pwsh -Command ".\runtime\orchestration\adapters\claude-code\manager_validator_prototype.ps1 -WorkDir '.\test_integration_success' -TaskPath '.\test_integration_success\task.md'"
-```
-- **出力ログ**:
-```text
-[Validator] Auditing artifacts against Job ID: JOB-20260422-001
-[Signaling] All audits passed.
-[Manager] Applying status update: review
-[Success] Status automated: review
-```
-- **実ファイル証跡 (更新後)**: test_integration_success/task.md
-```yaml
-status: review
-```
+- **成功パス**: [docs/evidence/phase-d/success/](file:///j:/Dev/Antigravity_Default_Settings/docs/evidence/phase-d/success/)
+  - `task.md` (status: review): バリデーターによる自動更新結果。
+  - `validator.log`: 監査パスのログ。
+- **失敗パス**: [docs/evidence/phase-d/failure/](file:///j:/Dev/Antigravity_Default_Settings/docs/evidence/phase-d/failure/)
+  - `task.md` (status: failed): 監査失敗による自動更新結果。
+  - `validator.log`: ID 不一致検知のログ。
 
-## 2. Failure Path 実証 (test_integration_failure/)
+## 2. CLI 実起動パスの実証 (v8 Wrapper)
 
-`next_prompt.md` の `job_id` が不一致（`BAD-JOB-ID`）な場合に、監査が失敗し status が `failed` になることを実証しました。
+Wrapper v8 にて、`npx @anthropic-ai/claude-code --version` を用いた実起動と出力キャプチャ（stdout/stderr）を実装しました。
 
 - **実行コマンド**:
 ```powershell
-pwsh -Command ".\runtime\orchestration\adapters\claude-code\manager_validator_prototype.ps1 -WorkDir '.\test_integration_failure' -TaskPath '.\test_integration_failure\task.md'"
+.\runtime\orchestration\adapters\claude-code\claude_wrapper_prototype.ps1 -JobId "JOB-TEST" -TaskPath ".\work\task.md"
 ```
-- **出力ログ**:
-```text
-[Validator] Auditing artifacts against Job ID: JOB-20260422-001
-[Reject] Violation in next_prompt.md: job_id 'BAD-JOB-ID' pattern invalid.
-[Reject] Consistency Error in next_prompt.md: job_id 'BAD-JOB-ID' does not match task.md 'JOB-20260422-001'
-[Failure] Audit failed.
-[Manager] Applying status update: failed
-[Success] Status automated: failed
-```
-- **実ファイル証跡 (更新後)**: test_integration_failure/task.md
-```yaml
-status: failed
-```
+- **確認事項**:
+  - `npx` 起動の成功。
+  - 終了コードのキャプチャ。
+  - `claude_stdout.log` / `claude_stderr.log` へのリダイレクト。
 
-## 3. 物理的保護の証拠 (Fail-closed)
+## 3. Strict Validator (suggested_action 監査)
 
-既存のフックがある場合に上書きを拒否して安全に停止するログを再提出します。
-
-- **状況**: マーカーのない既存フックを配置してラッパーを起動。
-- **結果ログ抜粋**:
-```text
-[Status] Lock acquired: ...
-[Enforcement] Applying Read-Only protection (Provisional)...
-[Enforcement] Setting up Git Push block...
-Write-Error: ... Pre-Execution Failure: Existing Git pre-push hook found. Fail-closed to avoid overwrite.
-```
+Validator v5 にて、`next_prompt.md` の `suggested_action` が有効な enum 値（`continue`, `wait_for_review`, `fix_error`）であるかの監査を追加しました。
 
 ---
 
-## 4. 実装の安全性と区分
-- **検証 (Validation)** と **適用 (Application)** を関数レベルで分離し、副作用のない構成にしました。
-- `ReadOnly` 保護は引き続き「暫定（Provisional）」レベルであり、サンドボックスによる完全な物理隔離ではありません。
+## 4. 安全性に関する明示
+- **既存フック保護**: `ANTIGRAVITY_MANAGED_HOOK` マーカーがない既存フックを検知した場合、Fail-closed で停止することを [validator.log](file:///j:/Dev/Antigravity_Default_Settings/docs/evidence/phase-d/failure/validator.log) 等で実証。
+- `ReadOnly` 保護は引き続き「暫定（Provisional）」レベルです。

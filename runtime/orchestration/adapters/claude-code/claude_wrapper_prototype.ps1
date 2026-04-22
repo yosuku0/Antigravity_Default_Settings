@@ -1,110 +1,133 @@
-# Claude Code Experimental Wrapper (Prototype v7)
-# Note: This is a design-to-code implementation of Phase C/D contracts.
+# Claude Code Execution Wrapper (Prototype v8 - Real Launch Path)
+# Note: Manages job locks, physical protection, and CLI execution with output capture.
 
 param (
     [Parameter(Mandatory=$true)]
     [string]$JobId,
     [Parameter(Mandatory=$true)]
-    [string]$TaskPath
+    [string]$TaskPath,
+    [string]$WorkDir = ".\work",
+    [switch]$SimulationMode = $false
 )
 
 $ErrorActionPreference = "Stop"
+$LockPath = Join-Path $WorkDir "$JobId.lock"
+$ProtectedPaths = @($TaskPath, ".\runtime\orchestration")
 
-# --- 1. Environment & Path Config ---
-$WorkDir = Split-Path $TaskPath -Parent
-$LockFile = Join-Path $WorkDir "$JobId.lock"
-$ProtectedPaths = @(
-    $TaskPath,
-    (Join-Path (Get-Location) "runtime/orchestration")
-)
-$NextPromptFile = Join-Path $WorkDir "next_prompt.md"
-$HookMarker = "ANTIGRAVITY_MANAGED_HOOK"
-
-# --- 2. Lock Creation (Fail-closed) ---
-if (Test-Path $LockFile) {
-    Write-Host "[Failure] Lock Conflict: $JobId is already locked."
-    exit 1
+# --- 1. Lifecycle Management: Lock ---
+function Acquire-Lock {
+    if (Test-Path $LockPath) {
+        throw "Job Conflict: Lock file already exists at $LockPath"
+    }
+    New-Item -Path $LockPath -ItemType File | Out-Null
+    Write-Host "[Status] Lock acquired: $LockPath"
 }
-New-Item -Path $LockFile -ItemType File | Out-Null
-Write-Host "[Status] Lock acquired: $LockFile"
 
-try {
-    # --- 3. Enforcement: Multi-Layer Protection ---
-    function Set-ReadOnly {
-        param([string]$Path, [bool]$Value)
-        if (Test-Path $Path) {
-            $item = Get-Item $Path
-            if ($Value) {
-                $item.Attributes = $item.Attributes -bor [System.IO.FileAttributes]::ReadOnly
-            } else {
-                $item.Attributes = $item.Attributes -band (-bnot [System.IO.FileAttributes]::ReadOnly)
-            }
+function Release-Lock {
+    if (Test-Path $LockPath) {
+        Remove-Item $LockPath -Force
+        Write-Host "[Status] Lock released."
+    }
+}
+
+# --- 2. Discard: Clean state ---
+function Clear-StaleArtifacts {
+    $NextPrompt = Join-Path $WorkDir "next_prompt.md"
+    if (Test-Path $NextPrompt) {
+        Remove-Item $NextPrompt -Force
+        Write-Host "[Status] Discarded stale next_prompt.md"
+    }
+}
+
+# --- 3. Enforcement: Multi-Layer Protection ---
+function Set-ReadOnly {
+    param([string]$Path, [bool]$Value)
+    if (Test-Path $Path) {
+        $item = Get-Item $Path
+        if ($Value) {
+            $item.Attributes = $item.Attributes -bor [System.IO.FileAttributes]::ReadOnly
+        } else {
+            $item.Attributes = $item.Attributes -band (-bnot [System.IO.FileAttributes]::ReadOnly)
         }
     }
+}
 
-    function Assert-EnforcementPolicy {
-        param([string[]]$Paths)
-        
-        # A. Read-Only Protection (Provisional - Not Sandbox)
-        Write-Host "[Enforcement] Applying Read-Only protection (Provisional)..."
-        foreach ($p in $Paths) {
-            Set-ReadOnly -Path $p -Value $true
-        }
-        
-        # B. Git Push Block (Fail-closed hook)
-        Write-Host "[Enforcement] Setting up Git Push block..."
-        $GitDir = (git rev-parse --git-dir 2>$null)
-        if ($GitDir) {
-            $HookPath = Join-Path $GitDir "hooks/pre-push"
-            if (Test-Path $HookPath) {
-                $Content = Get-Content $HookPath -Raw
-                if ($Content -notmatch $HookMarker) {
-                    Write-Error "Pre-Execution Failure: Existing Git pre-push hook found. Fail-closed to avoid overwrite."
-                }
-            }
-            $HookContent = "#!/bin/sh`n# $HookMarker`necho 'REJECTED: Git push is forbidden by Antigravity Contract.'`nexit 1"
-            [System.IO.File]::WriteAllText($HookPath, $HookContent)
-            Write-Host "  Push block installed at $HookPath"
-        }
-    }
+function Assert-EnforcementPolicy {
+    param([string[]]$Paths)
+    Write-Host "[Enforcement] Applying Read-Only protection (Provisional)..."
+    foreach ($p in $Paths) { Set-ReadOnly -Path $p -Value $true }
 
-    Assert-EnforcementPolicy -Paths $ProtectedPaths
-
-    # --- 4. Self-Correction: Stale Artifact Discard ---
-    if (Test-Path $NextPromptFile) {
-        Write-Host "[Self-Correction] Discarding stale next_prompt.md..."
-        Remove-Item $NextPromptFile -Force
-    }
-
-    # --- 5. Launch Claude Code (Simulated with lifecycle check) ---
-    Write-Host "[Launch] Starting Claude Code Job: $JobId"
-    # Simulated execution time for lifecycle audit
-    Start-Sleep -Seconds 1 
-    Write-Host "[Signal] Exit Code: 0"
-
-} finally {
-    # --- 6. Cleanup & Protection Release ---
-    Write-Host "[Cleanup] Releasing protection..."
-    foreach ($p in $ProtectedPaths) {
-        Set-ReadOnly -Path $p -Value $false
-    }
-    
-    # Remove push block only if it's ours
+    # B. Git Push Block (Fail-closed hook)
     $GitDir = (git rev-parse --git-dir 2>$null)
     if ($GitDir) {
         $HookPath = Join-Path $GitDir "hooks/pre-push"
         if (Test-Path $HookPath) {
             $Content = Get-Content $HookPath -Raw
-            if ($Content -match $HookMarker) {
+            if ($Content -notmatch "ANTIGRAVITY_MANAGED_HOOK") {
+                throw "Pre-Execution Failure: Existing Git pre-push hook found. Fail-closed to avoid overwrite."
+            }
+        }
+        Write-Host "[Enforcement] Setting up Git Push block (Managed Hook)..."
+        $HookContent = @"
+#!/bin/sh
+# ANTIGRAVITY_MANAGED_HOOK
+echo 'REJECTED: Push is disabled during Antigravity orchestration.'
+exit 1
+"@
+        [System.IO.File]::WriteAllText($HookPath, $HookContent)
+    }
+}
+
+function Remove-EnforcementPolicy {
+    param([string[]]$Paths)
+    Write-Host "[Cleanup] Releasing protection..."
+    foreach ($p in $Paths) { Set-ReadOnly -Path $p -Value $false }
+
+    $GitDir = (git rev-parse --git-dir 2>$null)
+    if ($GitDir) {
+        $HookPath = Join-Path $GitDir "hooks/pre-push"
+        if (Test-Path $HookPath) {
+            $Content = Get-Content $HookPath -Raw
+            if ($Content -match "ANTIGRAVITY_MANAGED_HOOK") {
                 Remove-Item $HookPath -Force
-                Write-Host "  Push block removed."
+                Write-Host "[Cleanup] Removed managed Git hook."
             }
         }
     }
+}
 
-    # --- 7. Lock Release ---
-    if (Test-Path $LockFile) {
-        Remove-Item $LockFile -Force
-        Write-Host "[Status] Lock released."
+# --- 4. Execution Layer: Real CLI Launch ---
+function Invoke-ClaudeCLI {
+    if ($SimulationMode) {
+        Write-Host "[Execution] Simulation Mode: Skipping real NPX call."
+        Start-Sleep -Seconds 2
+        return 0
     }
+
+    Write-Host "[Execution] Launching Claude Code via NPX..."
+    try {
+        # Note: In production, this would be: npx @anthropic-ai/claude-code --once ...
+        # For prototype, we use --version to prove execution and capture
+        $process = Start-Process -FilePath "npx.cmd" -ArgumentList "@anthropic-ai/claude-code --version" -NoNewWindow -PassThru -Wait -RedirectStandardOutput "claude_stdout.log" -RedirectStandardError "claude_stderr.log"
+        $exitCode = $process.ExitCode
+        Write-Host "[Execution] Completed with Exit Code: $exitCode"
+        return $exitCode
+    } catch {
+        Write-Host "[Error] Failed to launch NPX: $($_.Exception.Message)"
+        return 1
+    }
+}
+
+# --- Main Logic ---
+try {
+    Acquire-Lock
+    Clear-StaleArtifacts
+    Assert-EnforcementPolicy -Paths $ProtectedPaths
+
+    $ExitCode = Invoke-ClaudeCLI
+    Write-Host "[Status] Execution Phase Finished (ExitCode: $ExitCode)"
+
+} finally {
+    Remove-EnforcementPolicy -Paths $ProtectedPaths
+    Release-Lock
 }

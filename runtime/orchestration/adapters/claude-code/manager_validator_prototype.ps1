@@ -78,6 +78,12 @@ function Validate-Artifact {
             $Success = $false
         }
     }
+    if ($File -match "next_prompt.md" -and $Content -match "suggested_action\s*:\s*[`"']?([^`"'\s\r\n]+)[`"']?") {
+        if ($ValidActions -notcontains $Matches[1]) {
+            Write-Host "[Reject] Violation in next_prompt.md: Invalid suggested_action '$($Matches[1])'"
+            $Success = $false
+        }
+    }
 
     return $Success
 }
